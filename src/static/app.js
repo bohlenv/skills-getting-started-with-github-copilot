@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 5000);
   }
 
-  function createParticipantsList(participants) {
+  function createParticipantsList(participants, activityName) {
     const wrapper = document.createElement("div");
     wrapper.className = "participants";
     const title = document.createElement("h5");
@@ -30,7 +30,21 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       participants.forEach((p) => {
         const li = document.createElement("li");
-        li.textContent = p;
+        li.className = "participant-item";
+
+        const span = document.createElement("span");
+        span.className = "participant-email";
+        span.textContent = p;
+
+        const btn = document.createElement("button");
+        btn.className = "delete-btn";
+        btn.title = "Unregister participant";
+        btn.setAttribute("data-activity", activityName);
+        btn.setAttribute("data-email", p);
+        btn.innerHTML = "&times;"; // simple cross icon
+
+        li.appendChild(span);
+        li.appendChild(btn);
         ul.appendChild(li);
       });
     }
@@ -64,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
       card.appendChild(capacity);
 
       // Participants list
-      const participantsEl = createParticipantsList(info.participants);
+      const participantsEl = createParticipantsList(info.participants, name);
       card.appendChild(participantsEl);
 
       activitiesList.appendChild(card);
@@ -123,7 +137,21 @@ document.addEventListener("DOMContentLoaded", () => {
           ul.innerHTML = "";
         }
         const li = document.createElement("li");
-        li.textContent = email;
+        li.className = "participant-item";
+
+        const span = document.createElement("span");
+        span.className = "participant-email";
+        span.textContent = email;
+
+        const btn = document.createElement("button");
+        btn.className = "delete-btn";
+        btn.title = "Unregister participant";
+        btn.setAttribute("data-activity", activity);
+        btn.setAttribute("data-email", email);
+        btn.innerHTML = "&times;";
+
+        li.appendChild(span);
+        li.appendChild(btn);
         ul.appendChild(li);
 
         // update capacity line
@@ -145,4 +173,37 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadActivities();
+
+  // Delegate click events for delete buttons (unregister)
+  document.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest && ev.target.closest(".delete-btn");
+    if (!btn) return;
+
+    const activity = btn.getAttribute("data-activity");
+    const email = btn.getAttribute("data-email");
+    if (!activity || !email) return;
+
+    if (!confirm(`Unregister ${email} from ${activity}?`)) return;
+
+    try {
+      const url = `/activities/${encodeURIComponent(activity)}/participants?email=${encodeURIComponent(email)}`;
+      const res = await fetch(url, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = body.detail || body.message || "Failed to unregister";
+        showMessage(detail, "error");
+        return;
+      }
+
+      // Show success and reload to display updated counts from server
+      showMessage(body.message || `${email} unregistered from ${activity}`, "success");
+      // short delay so message is visible, then reload
+      setTimeout(() => {
+        location.reload();
+      }, 300);
+    } catch (err) {
+      console.error(err);
+      showMessage("Network error while unregistering.", "error");
+    }
+  });
 });
